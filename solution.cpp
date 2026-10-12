@@ -10,13 +10,11 @@ int main() {
     int x, k, p;
     if (!(cin >> x >> k >> p)) return 0;
     
-    vector<int> seats(x, 0);
+    vector<int> seats(x + 1, 0);
     
     for (int i = 0; i < p; i++) {
         int u, v, n;
         if (!(cin >> u >> v >> n)) break;
-        
-        u--; v--;
         
         bool can_fulfill = true;
         for (int j = u; j < v; j++) {
