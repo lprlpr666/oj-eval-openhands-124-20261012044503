@@ -1,90 +1,93 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 using namespace std;
 
-class SegmentTree {
+const int BLOCK_SIZE = 1000;
+
+class BlockArray {
 private:
-    int* tree;
-    int* lazy;
+    vector<int> data;
+    vector<int> block_max;
     int n;
+    int block_cnt;
     
-    void build(int node, int start, int end) {
-        if (start == end) {
-            tree[node] = 0;
-        } else {
-            int mid = (start + end) / 2;
-            build(2 * node, start, mid);
-            build(2 * node + 1, mid + 1, end);
-            tree[node] = max(tree[2 * node], tree[2 * node + 1]);
-        }
+    int get_block(int idx) {
+        return idx / BLOCK_SIZE;
     }
     
-    void push(int node, int start, int end) {
-        if (lazy[node] != 0) {
-            tree[node] += lazy[node];
-            if (start != end) {
-                lazy[2 * node] += lazy[node];
-                lazy[2 * node + 1] += lazy[node];
-            }
-            lazy[node] = 0;
+    void update_block_max(int block_id) {
+        int start = block_id * BLOCK_SIZE;
+        int end = min(start + BLOCK_SIZE, n);
+        block_max[block_id] = 0;
+        for (int i = start; i < end; i++) {
+            block_max[block_id] = max(block_max[block_id], data[i]);
         }
-    }
-    
-    int query(int node, int start, int end, int l, int r) {
-        push(node, start, end);
-        if (r < start || end < l) {
-            return 0;
-        }
-        if (l <= start && end <= r) {
-            return tree[node];
-        }
-        int mid = (start + end) / 2;
-        int left_max = query(2 * node, start, mid, l, r);
-        int right_max = query(2 * node + 1, mid + 1, end, l, r);
-        return max(left_max, right_max);
-    }
-    
-    void update(int node, int start, int end, int l, int r, int val) {
-        push(node, start, end);
-        if (r < start || end < l) {
-            return;
-        }
-        if (l <= start && end <= r) {
-            lazy[node] += val;
-            push(node, start, end);
-            return;
-        }
-        int mid = (start + end) / 2;
-        update(2 * node, start, mid, l, r, val);
-        update(2 * node + 1, mid + 1, end, l, r, val);
-        tree[node] = max(tree[2 * node], tree[2 * node + 1]);
     }
     
 public:
-    SegmentTree(int size) : n(size) {
-        int tree_size = 4 * n + 5;
-        tree = new int[tree_size];
-        lazy = new int[tree_size];
-        for (int i = 0; i < tree_size; i++) {
-            tree[i] = lazy[i] = 0;
-        }
-        build(1, 0, n - 1);
-    }
-    
-    ~SegmentTree() {
-        delete[] tree;
-        delete[] lazy;
+    BlockArray(int size) : n(size) {
+        data.resize(n, 0);
+        block_cnt = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+        block_max.resize(block_cnt, 0);
     }
     
     int query_max(int l, int r) {
         if (l > r) return 0;
-        return query(1, 0, n - 1, l, r);
+        int result = 0;
+        
+        int left_block = get_block(l);
+        int right_block = get_block(r);
+        
+        if (left_block == right_block) {
+            for (int i = l; i <= r; i++) {
+                result = max(result, data[i]);
+            }
+        } else {
+            for (int i = l; i < (left_block + 1) * BLOCK_SIZE && i < n; i++) {
+                result = max(result, data[i]);
+            }
+            for (int block = left_block + 1; block < right_block; block++) {
+                result = max(result, block_max[block]);
+            }
+            for (int i = right_block * BLOCK_SIZE; i <= r; i++) {
+                result = max(result, data[i]);
+            }
+        }
+        
+        return result;
     }
     
     void range_add(int l, int r, int val) {
         if (l > r) return;
-        update(1, 0, n - 1, l, r, val);
+        
+        int left_block = get_block(l);
+        int right_block = get_block(r);
+        
+        if (left_block == right_block) {
+            for (int i = l; i <= r; i++) {
+                data[i] += val;
+            }
+            update_block_max(left_block);
+        } else {
+            for (int i = l; i < (left_block + 1) * BLOCK_SIZE && i < n; i++) {
+                data[i] += val;
+            }
+            update_block_max(left_block);
+            
+            for (int block = left_block + 1; block < right_block; block++) {
+                for (int i = block * BLOCK_SIZE; i < (block + 1) * BLOCK_SIZE && i < n; i++) {
+                    data[i] += val;
+                }
+                update_block_max(block);
+            }
+            
+            for (int i = right_block * BLOCK_SIZE; i <= r; i++) {
+                data[i] += val;
+            }
+            update_block_max(right_block);
+        }
     }
 };
 
@@ -101,7 +104,7 @@ int main() {
         return 0;
     }
     
-    SegmentTree st(x - 1);
+    BlockArray ba(x - 1);
     
     for (int i = 0; i < p; i++) {
         int u, v, n;
@@ -114,10 +117,10 @@ int main() {
             continue;
         }
         
-        int max_booked = st.query_max(u, v - 1);
+        int max_booked = ba.query_max(u, v - 1);
         
         if (max_booked + n <= k) {
-            st.range_add(u, v - 1, n);
+            ba.range_add(u, v - 1, n);
             printf("T\n");
         } else {
             printf("N\n");
