@@ -5,8 +5,8 @@ using namespace std;
 
 class SegmentTree {
 private:
-    vector<int> tree;
-    vector<int> lazy;
+    int* tree;
+    int* lazy;
     int n;
     
     void build(int node, int start, int end) {
@@ -63,26 +63,43 @@ private:
     
 public:
     SegmentTree(int size) : n(size) {
-        tree.resize(4 * n);
-        lazy.resize(4 * n);
+        int tree_size = 4 * n + 5;
+        tree = new int[tree_size];
+        lazy = new int[tree_size];
+        for (int i = 0; i < tree_size; i++) {
+            tree[i] = lazy[i] = 0;
+        }
         build(1, 0, n - 1);
     }
     
+    ~SegmentTree() {
+        delete[] tree;
+        delete[] lazy;
+    }
+    
     int query_max(int l, int r) {
+        if (l > r) return 0;
         return query(1, 0, n - 1, l, r);
     }
     
     void range_add(int l, int r, int val) {
+        if (l > r) return;
         update(1, 0, n - 1, l, r, val);
     }
 };
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    
     int x, k, p;
     if (scanf("%d %d %d", &x, &k, &p) != 3) return 0;
+    
+    if (x <= 1) {
+        for (int i = 0; i < p; i++) {
+            int u, v, n;
+            if (scanf("%d %d %d", &u, &v, &n) != 3) break;
+            printf("N\n");
+        }
+        return 0;
+    }
     
     SegmentTree st(x - 1);
     
@@ -91,6 +108,11 @@ int main() {
         if (scanf("%d %d %d", &u, &v, &n) != 3) break;
         
         u--; v--;
+        
+        if (u >= v) {
+            printf("N\n");
+            continue;
+        }
         
         int max_booked = st.query_max(u, v - 1);
         
